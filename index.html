@@ -159,7 +159,7 @@
 <div id="adminLoginModal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
         <h3>切換至老師模式</h3>
-        <input type="password" id="adminPassword" placeholder="輸入密碼 (預設: Ambassador)">
+        <input type="password" id="adminPassword" placeholder="輸入密碼 ">
         <div>
             <button class="btn-primary" onclick="app.verifyAdmin()">登入</button>
             <button class="btn-danger" onclick="document.getElementById('adminLoginModal').style.display='none'">取消</button>
@@ -174,7 +174,7 @@
         <p>學生：<strong id="authStudentName" style="color: var(--accent-color);"></strong></p>
         
         <div style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
-            <input type="password" id="studentPin" placeholder="請輸入密碼 (預設為班號)">
+            <input type="password" id="studentPin" placeholder="請輸入密碼 ">
             <button class="btn-success" style="width: 90%; margin-top: 5px;" onclick="app.submitCheckIn()">確認簽到 (出席)</button>
         </div>
         
@@ -193,7 +193,7 @@
         <p>時段：<strong id="subTimeDisplay"></strong></p>
         <p style="font-size:0.8rem; color:#666;">請選擇你自己的名字並輸入密碼。</p>
         <select id="subStudentSelect"></select>
-        <input type="password" id="subStudentPin" placeholder="請輸入密碼 (預設為班號)">
+        <input type="password" id="subStudentPin" placeholder="請輸入密碼 ">
         <div>
             <button class="btn-success" onclick="app.submitSubstitute()">確認替更</button>
             <button class="btn-danger" onclick="document.getElementById('substituteModal').style.display='none'">取消</button>
@@ -509,7 +509,7 @@ const app = {
             document.getElementById('substituteModal').style.display = 'none';
             alert('✅ 替更成功！你已獲取 1 分優點積分。');
             this.renderWeeklyRoster();
-        } else { alert('❌ 密碼錯誤！(預設密碼為你的班號)'); }
+        } else { alert('❌ 密碼錯誤！'); }
     },
 
     verifyAdmin() {
