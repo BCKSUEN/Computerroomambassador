@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>資訊素養風紀管理系統 v1.5</title>
+    <title>資訊素養風紀管理系統 v1.6</title>
     <!-- Firebase SDK v10 -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -12,7 +12,7 @@
         :root {
             --primary-color: #2c3e50; --accent-color: #3498db; --success-color: #27ae60;
             --pending-color: #34495e; --future-color: #bdc3c7; --holiday-color: #e67e22; 
-            --danger-color: #e74c3c; --light-bg: #ecf0f1;
+            --danger-color: #e74c3c; --excused-color: #f1c40f; --light-bg: #ecf0f1;
         }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; background: var(--light-bg); color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -22,7 +22,7 @@
         .btn-primary { background: var(--primary-color); }
         .btn-accent { background: var(--accent-color); }
         .btn-success { background: var(--success-color); }
-        .btn-warning { background: #f39c12; color: white;}
+        .btn-warning { background: var(--excused-color); color: #333; font-weight: bold; }
         .btn-danger { background: var(--danger-color); }
         
         .section { display: none; }
@@ -40,6 +40,7 @@
         
         .duty-cell { padding: 10px; margin: 5px 0; border-radius: 5px; font-size: 0.9rem; color: white; font-weight: bold; }
         .cell-checked { background: var(--success-color); cursor: default; }
+        .cell-excused { background: var(--excused-color); color: #333; cursor: default; } /* v1.6 請假顏色 */
         .cell-subbed { background: var(--accent-color); cursor: default; } 
         .cell-pending { background: var(--pending-color); cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.1s; }
         .cell-pending:hover { transform: scale(1.05); }
@@ -54,7 +55,7 @@
         .tab-btn { background: transparent; color: #7f8c8d; margin-right: 10px; font-weight: bold; }
         .tab-btn.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); border-radius: 0; }
         
-        #holidayBanner { display: none; background: #f39c12; color: white; padding: 15px; text-align: center; font-weight: bold; border-radius: 5px; margin-bottom: 15px; }
+        #holidayBanner { display: none; background: #e67e22; color: white; padding: 15px; text-align: center; font-weight: bold; border-radius: 5px; margin-bottom: 15px; }
         #systemStatus { background: #f39c12; color: white; padding: 10px; text-align: center; font-size: 0.9rem; font-weight: bold;}
     </style>
 </head>
@@ -64,7 +65,7 @@
 
 <div class="container">
     <header>
-        <h1>資訊素養風紀管理系統 v1.5</h1>
+        <h1>資訊素養風紀管理系統 v1.6</h1>
         <div>
             <span id="currentUser" style="margin-right: 15px; font-weight: bold;">身分: 學生</span>
             <button class="btn-primary" onclick="document.getElementById('adminLoginModal').style.display='flex'" id="loginBtn">老師登入</button>
@@ -77,7 +78,7 @@
         <div id="holidayBanner">🏖️ 今日為學校假期或特別活動日，無需當值簽到。</div>
         
         <h2>📅 本周當值表 (<span id="weekRange"></span>)</h2>
-        <p style="font-size: 0.85rem; color: #555;">指示：點擊<strong>灰黑色</strong>的格仔進行簽到。<strong>綠色</strong>代表已簽到。</p>
+        <p style="font-size: 0.85rem; color: #555;">指示：點擊<strong>灰黑色</strong>的格仔進行簽到或請假。<strong>綠色</strong>代表已簽到，<strong style="color:#f39c12;">黃色</strong>代表已請假。</p>
         
         <div style="overflow-x: auto;">
             <table id="weeklyRosterTable">
@@ -90,7 +91,7 @@
 
         <div style="margin-top:20px; padding:15px; background:#e8f6f3; border-radius:5px; border: 1px solid #1abc9c;">
             <h3 style="margin-top:0; color: #16a085;">🔄 替更簽到 (Substitute)</h3>
-            <p style="font-size:0.85rem; color: #555;">如編定同學缺席，其他風紀可於<strong>當值時間開始 5 分鐘後</strong>替代當值。</p>
+            <p style="font-size:0.85rem; color: #555;">如編定同學缺席或請假，其他風紀可於<strong>當值時間開始 5 分鐘後</strong>替代當值。</p>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <select id="subTimeSlot" style="padding:8px; border-radius:4px; border:1px solid #ccc;">
                     <option value="13:05-13:20">午息1 (13:05-13:20)</option>
@@ -112,12 +113,12 @@
             <div class="dashboard-grid">
                 <div class="card" style="border-top: 4px solid var(--danger-color);">
                     <h3>🚨 經常缺席名單 (2次或以上)</h3>
-                    <p style="font-size: 0.8rem; color: #777;">統計起點：<strong style="color:var(--danger-color);">2026年3月23日</strong>起。<br>(自動排除公眾假期及突發停止當值日)</p>
+                    <p style="font-size: 0.8rem; color: #777;">統計起點：<strong style="color:var(--danger-color);">2026年3月23日</strong>起。<br>(自動排除公眾假期、突發停止當值日及<strong>已請假</strong>之同學)</p>
                     <ul id="frequentAbsenteesList" style="color: var(--danger-color); font-weight: bold;"></ul>
                 </div>
                 <div class="card" style="border-top: 4px solid var(--success-color);">
                     <h3>🏆 學生積分榜</h3>
-                    <p style="font-size: 0.8rem; color: #777;">常規出席及替更均會獲得 1 分。</p>
+                    <p style="font-size: 0.8rem; color: #777;">常規出席及替更均會獲得 1 分 (請假 0 分)。</p>
                     <table>
                         <thead><tr><th>班別</th><th>姓名</th><th>優點積分</th></tr></thead>
                         <tbody id="scoreTableBody"></tbody>
@@ -158,7 +159,7 @@
 <div id="adminLoginModal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
         <h3>切換至老師模式</h3>
-        <input type="password" id="adminPassword" placeholder="輸入密碼">
+        <input type="password" id="adminPassword" placeholder="輸入密碼 (預設: Ambassador)">
         <div>
             <button class="btn-primary" onclick="app.verifyAdmin()">登入</button>
             <button class="btn-danger" onclick="document.getElementById('adminLoginModal').style.display='none'">取消</button>
@@ -166,15 +167,21 @@
     </div>
 </div>
 
-<!-- 一般學生簽到密碼視窗 -->
+<!-- 一般學生簽到密碼視窗 (v1.6 增加請假按鈕) -->
 <div id="studentPinModal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
-        <h3>身分驗證</h3>
+        <h3>身分驗證及請假</h3>
         <p>學生：<strong id="authStudentName" style="color: var(--accent-color);"></strong></p>
-        <input type="password" id="studentPin" placeholder="請輸入密碼 (預設為班號)">
+        
+        <div style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+            <input type="password" id="studentPin" placeholder="請輸入密碼 (預設為班號)">
+            <button class="btn-success" style="width: 90%; margin-top: 5px;" onclick="app.submitCheckIn()">確認簽到 (出席)</button>
+        </div>
+        
         <div>
-            <button class="btn-success" onclick="app.submitCheckIn()">確認簽到</button>
-            <button class="btn-danger" onclick="document.getElementById('studentPinModal').style.display='none'">取消</button>
+            <p style="font-size: 0.8rem; color: #e67e22; margin-top: 0;">* 如生病或有事未能當值，可點擊下方按鈕</p>
+            <button class="btn-warning" style="width: 44%; margin-right: 2%;" onclick="app.submitExcused()">請假 (免密碼)</button>
+            <button class="btn-danger" style="width: 44%;" onclick="document.getElementById('studentPinModal').style.display='none'">取消返回</button>
         </div>
     </div>
 </div>
@@ -196,7 +203,7 @@
 
 <script>
 /**
- * Info Literacy System v1.5 - Forcible Load Version
+ * Info Literacy System v1.6 - Excused Leave Feature
  */
 
 const firebaseConfig = {
@@ -236,17 +243,14 @@ const app = {
     data: { students: DEFAULT_STUDENTS, schedule: DEFAULT_SCHEDULE, logs: [], specialDates: [] },
     pendingCheckIn: null,
     pendingSub: null,
-    isLoaded: false, // 防止重複載入
+    isLoaded: false, 
 
     init() { 
         this.loadData(); 
-        
-        // v1.5 強制超時保護機制 (5秒)
         setTimeout(() => {
             if(!this.isLoaded) {
-                console.warn("Firebase 連線超時！強制啟動單機模式。");
                 const statusEl = document.getElementById('systemStatus');
-                statusEl.innerText = "⚠️ 雲端連線失敗，目前為單機離線模式 (資料僅存於本機)。請檢查網絡或 Firebase 設定。";
+                statusEl.innerText = "⚠️ 雲端連線失敗，目前為單機離線模式。";
                 statusEl.style.background = "#e74c3c";
                 this.fallbackLoad();
             }
@@ -256,7 +260,7 @@ const app = {
     loadData() {
         const statusEl = document.getElementById('systemStatus');
         db.collection("config").doc("main").get().then(doc => {
-            if(this.isLoaded) return; // 如果已經 timeout 啟動了單機模式，就阻擋
+            if(this.isLoaded) return; 
             this.isLoaded = true;
 
             if(doc.exists) {
@@ -286,7 +290,7 @@ const app = {
 
     fallbackLoad() {
         this.isLoaded = true;
-        const stored = localStorage.getItem('info_literacy_v1_5');
+        const stored = localStorage.getItem('info_literacy_v1_6');
         if (stored) { 
             let parsed = JSON.parse(stored);
             this.data.students = parsed.students || DEFAULT_STUDENTS;
@@ -300,8 +304,7 @@ const app = {
     saveData() {
         db.collection("config").doc("main").set(this.data)
           .catch(err => {
-              console.warn("雲端儲存失敗，轉存本機");
-              localStorage.setItem('info_literacy_v1_5', JSON.stringify(this.data));
+              localStorage.setItem('info_literacy_v1_6', JSON.stringify(this.data));
           });
     },
 
@@ -360,7 +363,8 @@ const app = {
                     let students = (this.data.schedule && this.data.schedule[day] && this.data.schedule[day][time]) ? this.data.schedule[day][time] : [];
                     
                     students.forEach(studentName => {
-                        let log = this.data.logs.find(l => l.date === cellDate && l.time === time && l.student === studentName && l.status === "Present");
+                        let presentLog = this.data.logs.find(l => l.date === cellDate && l.time === time && l.student === studentName && l.status === "Present");
+                        let excusedLog = this.data.logs.find(l => l.date === cellDate && l.time === time && l.student === studentName && l.status === "Excused"); // v1.6 檢查請假
 
                         let div = document.createElement('div');
                         div.className = "duty-cell";
@@ -370,8 +374,11 @@ const app = {
                             div.classList.add("cell-holiday");
                             let reason = this.data.specialDates.find(sd => sd.date === cellDate)?.desc || "假期";
                             div.innerText += `\n(${reason})`;
-                        } else if (log) {
+                        } else if (presentLog) {
                             div.classList.add("cell-checked");
+                        } else if (excusedLog) {
+                            div.classList.add("cell-excused");
+                            div.innerText += `\n(已請假)`;
                         } else if (cellDate === todayStr) {
                             div.classList.add("cell-pending");
                             div.onclick = () => app.promptPin(studentName, cellDate, time);
@@ -421,6 +428,23 @@ const app = {
             alert('✅ 簽到成功！');
             this.renderWeeklyRoster();
         } else { alert('❌ 密碼錯誤，請重新輸入！'); }
+    },
+
+    // v1.6 免密碼請假邏輯
+    submitExcused() {
+        if(confirm(`確定要為 [${this.pendingCheckIn.studentName}] 登記請假嗎？\n\n注意：\n1. 請假將免除缺席紀錄。\n2. 請假不會獲得優點積分。\n3. 其他同學可於 5 分鐘後替更。`)) {
+            this.data.logs.push({
+                date: this.pendingCheckIn.date, 
+                time: this.pendingCheckIn.time,
+                student: this.pendingCheckIn.studentName, 
+                status: "Excused", 
+                timestamp: new Date().toISOString()
+            });
+            this.saveData();
+            document.getElementById('studentPinModal').style.display = 'none';
+            alert('✅ 已成功登記請假！');
+            this.renderWeeklyRoster();
+        }
     },
 
     initSubstitute() {
@@ -521,7 +545,13 @@ const app = {
     renderDashboard() {
         let scores = {};
         this.data.students.forEach(s => scores[s.full] = { ...s, score: 0 });
-        this.data.logs.forEach(l => { if(scores[l.student]) scores[l.student].score += 1; });
+        
+        // v1.6 計分邏輯：只有出席(Present)及替更(Substitute)才加分，請假(Excused)不加分
+        this.data.logs.forEach(l => { 
+            if(scores[l.student] && (l.status === "Present" || l.status === "Substitute")) {
+                scores[l.student].score += 1; 
+            }
+        });
         
         const sortedScores = Object.values(scores).sort((a,b) => b.score - a.score);
         const tbody = document.getElementById('scoreTableBody');
@@ -545,7 +575,8 @@ const app = {
                     if(daySchedule) {
                         Object.values(daySchedule).forEach(students => {
                             students.forEach(studentName => {
-                                let hasLog = this.data.logs.find(l => l.date === dStr && l.student === studentName);
+                                // v1.6 缺席邏輯：只要有 出席 或 請假 紀錄，就不當作缺席
+                                let hasLog = this.data.logs.find(l => l.date === dStr && l.student === studentName && (l.status === "Present" || l.status === "Excused"));
                                 if(!hasLog) { absentees[studentName] = (absentees[studentName] || 0) + 1; }
                             });
                         });
